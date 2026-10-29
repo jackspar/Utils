@@ -121,28 +121,39 @@ $apps = @(
 $total = $apps.Count
 
 # ---- SHOW MENU ----
-function Show-Menu($selected) {
+function Show-Menu($selected, $cursor) {
     Write-Banner
-    Write-Host "  Toggle: 1-$total  |  A=all  |  N=none  |  ENTER=install  |  Q=quit" -ForegroundColor Yellow
+    Write-Host "  UP/DOWN=move  SPACE=toggle  A=all  N=none  ENTER=install  Q=quit" -ForegroundColor Yellow
     Write-Host ""
 
-    $half = [Math]::Ceiling($apps.Count / 2)
-    for ($i = 0; $i -lt $half; $i++) {
-        $j = $i + $half
-        $chkL = if ($selected[$i]) { "[X]" } else { "[ ]" }
-        $colL = if ($selected[$i]) { "Green" } else { "DarkGray" }
-        $catL = $apps[$i].Cat.PadRight(8).Substring(0,8)
-        $left  = "  {0} {1,2}. {2} [{3}]" -f $chkL, ($i+1), $apps[$i].Label.TrimEnd().PadRight(24), $catL
+    $lastCat = ""
+    $i = 0
+    while ($i -lt $apps.Count) {
+        if ($apps[$i].Cat -ne $lastCat) {
+            Write-Host ("  [ {0} ]" -f $apps[$i].Cat) -ForegroundColor DarkCyan
+            $lastCat = $apps[$i].Cat
+        }
+        $j = $i + 1
+        $sameCat = ($j -lt $apps.Count -and $apps[$j].Cat -eq $apps[$i].Cat)
 
-        if ($j -lt $apps.Count) {
-            $chkR = if ($selected[$j]) { "[X]" } else { "[ ]" }
-            $colR = if ($selected[$j]) { "Green" } else { "DarkGray" }
-            $catR = $apps[$j].Cat.PadRight(8).Substring(0,8)
-            $right = "  {0} {1,2}. {2} [{3}]" -f $chkR, ($j+1), $apps[$j].Label.TrimEnd().PadRight(24), $catR
+        $chkL  = if ($selected[$i]) { "[X]" } else { "[ ]" }
+        $curL  = ($i -eq $cursor)
+        $colL  = if ($curL) { "Cyan" } elseif ($selected[$i]) { "Green" } else { "DarkGray" }
+        $prefL = if ($curL) { ">>" } else { "  " }
+        $left  = "{0} {1} {2,2}. {3}" -f $prefL, $chkL, ($i+1), $apps[$i].Label.TrimEnd().PadRight(26)
+
+        if ($sameCat) {
+            $chkR  = if ($selected[$j]) { "[X]" } else { "[ ]" }
+            $curR  = ($j -eq $cursor)
+            $colR  = if ($curR) { "Cyan" } elseif ($selected[$j]) { "Green" } else { "DarkGray" }
+            $prefR = if ($curR) { ">>" } else { "  " }
+            $right = "{0} {1} {2,2}. {3}" -f $prefR, $chkR, ($j+1), $apps[$j].Label.TrimEnd()
             Write-Host $left -ForegroundColor $colL -NoNewline
             Write-Host $right -ForegroundColor $colR
+            $i += 2
         } else {
             Write-Host $left -ForegroundColor $colL
+            $i += 1
         }
     }
 
@@ -152,20 +163,21 @@ function Show-Menu($selected) {
 }
 
 $selected = @(1..$total | ForEach-Object { $true })
+$cursor   = 0
 
 while ($true) {
-    Show-Menu $selected
-    $input = (Read-Host "  >").Trim().ToUpper()
+    Show-Menu $selected $cursor
+    $key = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+    $ch  = $key.Character.ToString().ToUpper()
+    $vk  = $key.VirtualKeyCode
 
-    if     ($input -eq "Q")  { Write-Host "  Cancelled." -ForegroundColor DarkGray; Read-Host "  Press Enter to close"; exit }
-    elseif ($input -eq "")   { break }
-    elseif ($input -eq "A")  { $selected = @(1..$total | ForEach-Object { $true }) }
-    elseif ($input -eq "N")  { $selected = @(1..$total | ForEach-Object { $false }) }
-    elseif ($input -match '^\d+$') {
-        $idx = [int]$input - 1
-        if ($idx -ge 0 -and $idx -lt $total) { $selected[$idx] = -not $selected[$idx] }
-        else { Write-Host "  Invalid number. Range: 1-$total" -ForegroundColor Red; Start-Sleep 1 }
-    }
+    if     ($vk -eq 38) { if ($cursor -gt 0)          { $cursor-- } }
+    elseif ($vk -eq 40) { if ($cursor -lt ($total-1)) { $cursor++ } }
+    elseif ($vk -eq 32) { $selected[$cursor] = -not $selected[$cursor] }
+    elseif ($vk -eq 13) { break }
+    elseif ($ch -eq "Q") { exit }
+    elseif ($ch -eq "A") { $selected = @(1..$total | ForEach-Object { $true }) }
+    elseif ($ch -eq "N") { $selected = @(1..$total | ForEach-Object { $false }) }
 }
 
 # ---- INSTALL ----
