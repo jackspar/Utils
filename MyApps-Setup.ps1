@@ -13,6 +13,15 @@ if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
 
 $Host.UI.RawUI.WindowTitle = "MyApps-Setup"
 
+# Resize window so entire menu fits without scrolling
+try {
+    $raw = $Host.UI.RawUI
+    $newBuf = New-Object System.Management.Automation.Host.Size(130, 3000)
+    $newWin = New-Object System.Management.Automation.Host.Size(130, 45)
+    if ($raw.BufferSize.Width -lt 130) { $raw.BufferSize = $newBuf }
+    $raw.WindowSize = $newWin
+} catch {}
+
 # ---- HELPERS ----
 
 function Write-Banner {
@@ -183,9 +192,9 @@ function Show-Menu($states, $cursor) {
 
         $ci = $catStart
         while ($ci -lt $catEnd) {
-            # Collect up to 3 indices for this row
+            # 4 columns per row; each slot is 32 chars wide (4x32=128 + 2 margin = 130)
             $row = @()
-            for ($c = 0; $c -lt 3 -and ($ci + $c) -lt $catEnd; $c++) {
+            for ($c = 0; $c -lt 4 -and ($ci + $c) -lt $catEnd; $c++) {
                 $row += ($ci + $c)
             }
 
@@ -197,16 +206,12 @@ function Show-Menu($states, $cursor) {
                 $chk    = if ($st -eq 1) { "[X]" } elseif ($st -eq 2) { "[!]" } else { "[ ]" }
                 $color  = if ($isCur) { "Cyan" } elseif ($st -eq 1) { "Green" } elseif ($st -eq 2) { "DarkRed" } else { "DarkGray" }
 
-                $marker = " "
-                if     ($apps[$idx].HasUpd)  { $marker = "^" }
-                elseif ($apps[$idx].IsInst)  { $marker = "+" }
+                $marker = if ($apps[$idx].HasUpd) { "^" } elseif ($apps[$idx].IsInst) { "+" } else { " " }
+                $name   = $apps[$idx].Label
+                if ($name.Length -gt 17) { $name = $name.Substring(0, 17) }
 
-                $name = $apps[$idx].Label.TrimEnd()
-                if ($name.Length -gt 13) { $name = $name.Substring(0, 13) }
-                $name = $name.PadRight(13)
-
-                # Slot width: prefix(2)+chk(3)+sp(1)+num(3)+sp(1)+name(13)+marker(1) = 24 chars
-                $slot   = "{0}{1} {2,2}. {3}{4}" -f $prefix, $chk, ($idx + 1), $name, $marker
+                # slot: prefix(2)+chk(3)+sp(1)+num(2)+". "(2)+name(17)+sp(1)+marker(1) = 29, padded to 32
+                $slot   = ("{0}{1} {2,2}. {3} {4}" -f $prefix, $chk, ($idx+1), $name.PadRight(17), $marker).PadRight(32)
                 $isLast = ($c -eq ($row.Count - 1))
 
                 if ($isLast) {
@@ -216,12 +221,13 @@ function Show-Menu($states, $cursor) {
                 }
             }
 
-            $ci += 3
+            $ci += 4
         }
-        Write-Host ""
+
         $catStart = $catEnd
     }
 
+    Write-Host ""
     Write-Host "  MANUAL: NinjaTrader 8  |  thinkorswim  |  Office 2010  |  Epson Scan 2" -ForegroundColor DarkGray
     Write-Host ""
 }
