@@ -76,7 +76,7 @@ $apps = @(
     @{ Label = "ExplorerPatcher         "; Cat = "Shell/UI";    Note = "Classic Explorer/taskbar (GitHub)" }
     @{ Label = "Open Shell              "; Cat = "Shell/UI";    Note = "Classic cascading Start Menu (GitHub)" }
     @{ Label = "Microsoft PowerToys     "; Cat = "Shell/UI";    Note = "Alt+Space, FancyZones, File Explorer add-ons" }
-    @{ Label = "8GadgetPack             "; Cat = "Shell/UI";    Note = "Desktop gadgets sidebar (downloads latest from gadgetpack.net)" }
+    @{ Label = "8GadgetPack             "; Cat = "Shell/UI";    Note = "Desktop gadgets sidebar (LOCAL MSI ONLY — v31, no download)" }
     # Browsers
     @{ Label = "Brave Browser           "; Cat = "Browser";     Note = "Primary browser — auto-start, do NOT clear cache" }
     @{ Label = "Firefox                 "; Cat = "Browser";     Note = "Secondary + PWAs (Finviz) — do NOT clear cache" }
@@ -155,16 +155,16 @@ $selected = @(1..$total | ForEach-Object { $true })
 
 while ($true) {
     Show-Menu $selected
-    $key = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
-    $ch  = $key.Character.ToString().ToUpper()
+    $input = (Read-Host "  >").Trim().ToUpper()
 
-    if     ($ch -eq "Q")              { Write-Host "  Cancelled." -ForegroundColor DarkGray; Read-Host "  Press Enter to close"; exit }
-    elseif ($key.VirtualKeyCode -eq 13) { break }
-    elseif ($ch -eq "A")              { $selected = @(1..$total | ForEach-Object { $true }) }
-    elseif ($ch -eq "N")              { $selected = @(1..$total | ForEach-Object { $false }) }
-    elseif ($ch -ge "1" -and $ch -le "9") {
-        $idx = [int]$ch - 1
-        if ($idx -lt $total) { $selected[$idx] = -not $selected[$idx] }
+    if     ($input -eq "Q")  { Write-Host "  Cancelled." -ForegroundColor DarkGray; Read-Host "  Press Enter to close"; exit }
+    elseif ($input -eq "")   { break }
+    elseif ($input -eq "A")  { $selected = @(1..$total | ForEach-Object { $true }) }
+    elseif ($input -eq "N")  { $selected = @(1..$total | ForEach-Object { $false }) }
+    elseif ($input -match '^\d+$') {
+        $idx = [int]$input - 1
+        if ($idx -ge 0 -and $idx -lt $total) { $selected[$idx] = -not $selected[$idx] }
+        else { Write-Host "  Invalid number. Range: 1-$total" -ForegroundColor Red; Start-Sleep 1 }
     }
 }
 
