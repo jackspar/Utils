@@ -13,6 +13,7 @@ Public Windows utilities. Run any script on any PC — **no installation require
 | Script | Description |
 |---|---|
 | [Cleanup-Windows.ps1](#cleanup-windowsps1) | Interactive disk cleanup with space estimates |
+| [MyApps-Setup.ps1](#myapps-setupps1) | Install standard desktop apps on a new PC |
 
 ---
 
@@ -80,11 +81,53 @@ A summary shows total space freed and a log line is written to `cleanup_log.txt`
 
 ---
 
+## MyApps-Setup.ps1
+
+Installs a standard desktop app set on a fresh Windows 10/11 PC using an interactive menu. Uses `winget` for most apps and GitHub releases for ExplorerPatcher and Open Shell.
+
+### Run
+
+```powershell
+powershell -ExecutionPolicy Bypass -File MyApps-Setup.ps1
+```
+
+> Auto-elevates to Administrator. Requires `winget` (included in Windows 10 22H2+ and Windows 11).
+
+### Apps included
+
+| # | App | Method |
+|---|---|---|
+| 1 | ExplorerPatcher | GitHub release |
+| 2 | Open Shell | GitHub release |
+| 3 | Microsoft PowerToys | winget |
+| 4 | Brave Browser | winget |
+| 5 | Firefox | winget |
+| 6 | Visual Studio Code | winget |
+| 7 | gh CLI | winget |
+| 8 | Macrium Reflect Free | winget |
+| 9 | Wise Program Uninstaller | winget |
+| 10 | NVIDIA GeForce NOW | winget |
+| 11 | Steam | winget |
+| 12 | Canva | winget |
+
+### Manual steps shown after install
+
+The script reminds you of apps that cannot be automated:
+
+- **Sidebar427** — sidebar427.net (desktop gadget sidebar)
+- **NinjaTrader 8** — ninjatrader.com (requires account)
+- **thinkorswim** — schwab.com/trading/thinkorswim (requires account)
+- **Office 2010** — from install media
+- **Epson Scan 2** — from epson.com (printer-specific)
+
+---
+
 ## Requirements
 
 - Windows 10 or Windows 11
 - PowerShell 5.1 (built-in) or later
 - Internet connection only needed for the `irm | iex` one-liner
+- `winget` required for MyApps-Setup (built into Windows 10 22H2+ and Windows 11)
 
 ---
 
