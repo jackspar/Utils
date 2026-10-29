@@ -52,7 +52,7 @@ function Install-GitHubLatest($repo, $assetFilter, $label) {
 }
 
 function Install-GadgetPack {
-    # 8GadgetPack v31 — USE LOCAL MSI ONLY. Do NOT upgrade to newer versions.
+    # 8GadgetPack v31 -- USE LOCAL MSI ONLY. Do NOT upgrade to newer versions.
     # Newer versions may omit gadgets used in current config (MyWeather, TopProcessMonitor, etc.)
     # Installer preserved at: D:\OneDrive\w10 to w11 migration\8GadgetPack\8GadgetPackSetup.msi
     $localMsi = "D:\OneDrive\w10 to w11 migration\8GadgetPack\8GadgetPackSetup.msi"
@@ -66,7 +66,7 @@ function Install-GadgetPack {
     } else {
         Write-Host "  [FAIL] Local MSI not found at: $localMsi" -ForegroundColor Red
         Write-Host "         Copy 8GadgetPackSetup.msi from your D: drive backup before continuing." -ForegroundColor Yellow
-        Write-Host "         DO NOT download a newer version — it may not include your gadgets." -ForegroundColor Yellow
+        Write-Host "         DO NOT download a newer version -- it may not include your gadgets." -ForegroundColor Yellow
     }
 }
 
@@ -76,12 +76,12 @@ $apps = @(
     @{ Label = "ExplorerPatcher         "; Cat = "Shell/UI";    Note = "Classic Explorer/taskbar (GitHub)" }
     @{ Label = "Open Shell              "; Cat = "Shell/UI";    Note = "Classic cascading Start Menu (GitHub)" }
     @{ Label = "Microsoft PowerToys     "; Cat = "Shell/UI";    Note = "Alt+Space, FancyZones, File Explorer add-ons" }
-    @{ Label = "8GadgetPack             "; Cat = "Shell/UI";    Note = "Desktop gadgets sidebar (LOCAL MSI ONLY — v31, no download)" }
+    @{ Label = "8GadgetPack             "; Cat = "Shell/UI";    Note = "Desktop gadgets sidebar (LOCAL MSI ONLY -- v31, no download)" }
     # Browsers
-    @{ Label = "Brave Browser           "; Cat = "Browser";     Note = "Primary browser — auto-start, do NOT clear cache" }
-    @{ Label = "Firefox                 "; Cat = "Browser";     Note = "Secondary + PWAs (Finviz) — do NOT clear cache" }
+    @{ Label = "Brave Browser           "; Cat = "Browser";     Note = "Primary browser -- auto-start, do NOT clear cache" }
+    @{ Label = "Firefox                 "; Cat = "Browser";     Note = "Secondary + PWAs (Finviz) -- do NOT clear cache" }
     # Hardware Monitoring
-    @{ Label = "HWiNFO 64               "; Cat = "Hardware";    Note = "CPU/GPU/watts sensors — enable Shared Memory for gadgets" }
+    @{ Label = "HWiNFO 64               "; Cat = "Hardware";    Note = "CPU/GPU/watts sensors -- enable Shared Memory for gadgets" }
     @{ Label = "Core Temp               "; Cat = "Hardware";    Note = "Lightweight CPU temp per-core" }
     @{ Label = "CPU-Z                   "; Cat = "Hardware";    Note = "CPU/RAM hardware info" }
     @{ Label = "CrystalDiskMark         "; Cat = "Hardware";    Note = "Disk speed benchmark" }
@@ -94,7 +94,7 @@ $apps = @(
     @{ Label = "Google Drive            "; Cat = "Cloud";       Note = "Google Drive desktop sync" }
     # Dev
     @{ Label = "Visual Studio Code      "; Cat = "Dev";         Note = "Code editor" }
-    @{ Label = "Node.js LTS             "; Cat = "Dev";         Note = "JS runtime — required for nt8-mcp server" }
+    @{ Label = "Node.js LTS             "; Cat = "Dev";         Note = "JS runtime -- required for nt8-mcp server" }
     @{ Label = "Deno                    "; Cat = "Dev";         Note = "Modern JS/TS runtime" }
     @{ Label = "uv                      "; Cat = "Dev";         Note = "Python package manager (fast pip replacement)" }
     @{ Label = "git                     "; Cat = "Dev";         Note = "Version control" }
