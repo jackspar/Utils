@@ -52,25 +52,21 @@ function Install-GitHubLatest($repo, $assetFilter, $label) {
 }
 
 function Install-GadgetPack {
-    # GadgetPack (formerly 8GadgetPack) — gadgetpack.net
-    # Try downloading latest first; fall back to local copy on D:
-    $url      = "https://gadgetpack.net/dl_430/GadgetPackSetup.msi"
+    # 8GadgetPack v31 — USE LOCAL MSI ONLY. Do NOT upgrade to newer versions.
+    # Newer versions may omit gadgets used in current config (MyWeather, TopProcessMonitor, etc.)
+    # Installer preserved at: D:\OneDrive\w10 to w11 migration\8GadgetPack\8GadgetPackSetup.msi
     $localMsi = "D:\OneDrive\w10 to w11 migration\8GadgetPack\8GadgetPackSetup.msi"
-    $tmp      = Join-Path $env:TEMP "GadgetPackSetup.msi"
 
-    Write-Host "  Downloading GadgetPack from gadgetpack.net..." -ForegroundColor Gray
-    try {
-        Invoke-WebRequest -Uri $url -OutFile $tmp -ErrorAction Stop
-        Start-Process msiexec -ArgumentList "/i `"$tmp`" /quiet /norestart" -Wait
-        Write-Host "  [OK] GadgetPack v43.0" -ForegroundColor Green
-    } catch {
-        Write-Host "  [WARN] Download failed - trying local copy..." -ForegroundColor Yellow
-        if (Test-Path $localMsi) {
-            Start-Process msiexec -ArgumentList "/i `"$localMsi`" /quiet /norestart" -Wait
-            Write-Host "  [OK] GadgetPack (local copy)" -ForegroundColor Green
-        } else {
-            Write-Host "  [FAIL] No local copy found. Download manually: gadgetpack.net" -ForegroundColor Red
-        }
+    if (Test-Path $localMsi) {
+        Write-Host "  Installing 8GadgetPack v31 from local copy..." -ForegroundColor Gray
+        Start-Process msiexec -ArgumentList "/i `"$localMsi`" /quiet /norestart" -Wait
+        Write-Host "  [OK] 8GadgetPack v31 installed" -ForegroundColor Green
+        Write-Host "  NOTE: After install, restore gadgets from:" -ForegroundColor DarkGray
+        Write-Host "        C:\zPC-Beelink\8GadgetPack-backup\ (settings.ini + manifest)" -ForegroundColor DarkGray
+    } else {
+        Write-Host "  [FAIL] Local MSI not found at: $localMsi" -ForegroundColor Red
+        Write-Host "         Copy 8GadgetPackSetup.msi from your D: drive backup before continuing." -ForegroundColor Yellow
+        Write-Host "         DO NOT download a newer version — it may not include your gadgets." -ForegroundColor Yellow
     }
 }
 
