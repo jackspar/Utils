@@ -1,8 +1,8 @@
-# ============================================================
+﻿# ============================================================
 #  Cleanup-Windows.ps1
-#  Generic Windows routine cleanup — works on any Windows PC
+#  Generic Windows routine cleanup â€” works on any Windows PC
 #  Run from: powershell -ExecutionPolicy Bypass -File "Cleanup-Windows.ps1"
-#  Or via: irm https://raw.githubusercontent.com/jackspar/utils/main/Cleanup-Windows.ps1 | iex
+#  Or via: irm https://raw.githubusercontent.com/jackspar/Utils/main/Cleanup-Windows.ps1 | iex
 # ============================================================
 
 # Auto-elevate to Administrator
@@ -44,7 +44,7 @@ function Clear-Folder($path, $label) {
     Get-ChildItem $path -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
     $after = Get-FolderSize $path
     $freed = [math]::Max(0, $before - $after)
-    Write-Host "  [OK] $label — freed $(Format-MB $freed)" -ForegroundColor Green
+    Write-Host "  [OK] $label â€” freed $(Format-MB $freed)" -ForegroundColor Green
     return $freed
 }
 
@@ -96,7 +96,7 @@ function Show-Menu($selected) {
 
     Write-Host ""
     Write-Host "  ====================================================" -ForegroundColor Blue
-    Write-Host "  Press: number (1-7) · A (all) · N (none) · ENTER (run) · Q (quit)" -ForegroundColor Yellow
+    Write-Host "  Press: number (1-7) Â· A (all) Â· N (none) Â· ENTER (run) Â· Q (quit)" -ForegroundColor Yellow
     Write-Host ""
 }
 
@@ -145,7 +145,7 @@ if ($selected[4]) {
     $count = 0
     wevtutil el 2>$null | ForEach-Object { wevtutil cl "$_" 2>$null; $count++ }
     $logsAfter = (Get-ChildItem "C:\Windows\System32\winevt\Logs" -File -ErrorAction SilentlyContinue | Measure-Object Length -Sum).Sum
-    Write-Host "  [OK] Event logs ($count) — freed $(Format-MB ([math]::Max(0,$logsBefore - $logsAfter)))" -ForegroundColor Green
+    Write-Host "  [OK] Event logs ($count) â€” freed $(Format-MB ([math]::Max(0,$logsBefore - $logsAfter)))" -ForegroundColor Green
 }
 
 if ($selected[5]) {
@@ -163,15 +163,15 @@ if ($selected[5]) {
     }
     $beforeClean = (Get-PSDrive C).Free
     Start-Process cleanmgr -ArgumentList "/sagerun:99" -Wait -WindowStyle Hidden
-    Write-Host "  [OK] Disk Cleanup complete — freed $(Format-MB ([math]::Max(0,(Get-PSDrive C).Free - $beforeClean)))" -ForegroundColor Green
+    Write-Host "  [OK] Disk Cleanup complete â€” freed $(Format-MB ([math]::Max(0,(Get-PSDrive C).Free - $beforeClean)))" -ForegroundColor Green
 }
 
 if ($selected[6]) {
-    Write-Host ""; Write-Host "  [7/7] DISM Component Cleanup (5-15 min — please wait)..." -ForegroundColor Yellow
+    Write-Host ""; Write-Host "  [7/7] DISM Component Cleanup (5-15 min â€” please wait)..." -ForegroundColor Yellow
     $beforeDism = (Get-PSDrive C).Free
     dism /Online /Cleanup-Image /StartComponentCleanup 2>&1 | Out-Null
     $freed = [math]::Max(0,(Get-PSDrive C).Free - $beforeDism)
-    if ($LASTEXITCODE -eq 0) { Write-Host "  [OK] DISM complete — freed $(Format-MB $freed)" -ForegroundColor Green }
+    if ($LASTEXITCODE -eq 0) { Write-Host "  [OK] DISM complete â€” freed $(Format-MB $freed)" -ForegroundColor Green }
     else { Write-Host "  [WARN] DISM reported an issue (may still have cleaned up)" -ForegroundColor Yellow }
 }
 
@@ -194,3 +194,4 @@ try { Add-Content -Path (Join-Path $logDir "cleanup_log.txt") -Value $logLine -E
 Write-Host "  Log: $(Join-Path $logDir 'cleanup_log.txt')" -ForegroundColor DarkGray
 Write-Host ""
 Read-Host "  Press Enter to close"
+

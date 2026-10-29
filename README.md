@@ -1,17 +1,17 @@
-# jackspar/utils
+# jackspar/Utils
 
-Public Windows utilities — run on any PC without installing anything.
+Public Windows utilities -- run on any PC without installing anything.
 
 ## Cleanup-Windows.ps1
 
 Generic Windows routine cleanup with an interactive menu. Shows estimated space for each category before you run anything.
 
-**Cleans:** Windows Temp · User Temp · Windows Update Cache · Prefetch · Event Logs · Disk Cleanup (22 categories) · DISM Component Store
+**Cleans:** Windows Temp - User Temp - Windows Update Cache - Prefetch - Event Logs - Disk Cleanup (22 categories) - DISM Component Store
 
 ### Run from anywhere (no install needed)
 
 ```powershell
-irm https://raw.githubusercontent.com/jackspar/utils/main/Cleanup-Windows.ps1 | iex
+irm https://raw.githubusercontent.com/jackspar/Utils/main/Cleanup-Windows.ps1 | iex
 ```
 
 Or download and run locally:
@@ -40,6 +40,6 @@ powershell -ExecutionPolicy Bypass -File Cleanup-Windows.ps1
   [X] 7. DISM Component Store   ~varies (slow)
 ```
 
-Toggle items on/off with number keys · DISM takes 5–15 min and needs a reboot · auto-elevates to Admin
+Toggle items on/off with number keys. DISM takes 5-15 min and needs a reboot. Auto-elevates to Admin.
 
-### Safe for Windows 10 / 11 — does not touch browser caches, user documents, or application data
+### Safe for Windows 10 / 11 -- does not touch browser caches, user documents, or application data
