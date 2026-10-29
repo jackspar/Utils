@@ -176,55 +176,79 @@ $states = @(0..($total - 1) | ForEach-Object {
 })
 
 # ---- SHOW MENU ----
-function Show-Menu($states, $cursor) {
+function Show-Menu($states, $menuIdx, $cursor) {
     Write-Banner
-    Write-Host "  UP/DOWN=move  SPACE=cycle([ ]/[X]/[!])  A=all  N=none  ENTER=install  Q=quit" -ForegroundColor Yellow
-    Write-Host "  [ ]=skip  [X]=install  [!]=NEVER  +=installed  ^=update avail" -ForegroundColor DarkGray
+    Write-Host "  UP/DOWN=move  SPACE=toggle  A=all  N=none  ENTER=install  Q=quit" -ForegroundColor Yellow
     Write-Host ""
 
-    $catStart = 0
-    while ($catStart -lt $apps.Count) {
-        $cat    = $apps[$catStart].Cat
-        $catEnd = $catStart
-        while ($catEnd -lt $apps.Count -and $apps[$catEnd].Cat -eq $cat) { $catEnd++ }
-
-        Write-Host ("  [ {0} ]" -f $cat) -ForegroundColor DarkCyan
-
-        $ci = $catStart
-        while ($ci -lt $catEnd) {
-            # 4 columns per row; each slot is 32 chars wide (4x32=128 + 2 margin = 130)
-            $row = @()
-            for ($c = 0; $c -lt 4 -and ($ci + $c) -lt $catEnd; $c++) {
-                $row += ($ci + $c)
+    # Header: already-installed and blocked summary
+    $utd = @(); $blk = @()
+    for ($x = 0; $x -lt $apps.Count; $x++) {
+        if ($states[$x] -eq 2)             { $blk += $apps[$x].Label }
+        elseif ($apps[$x].IsInst -and -not $apps[$x].HasUpd) { $utd += $apps[$x].Label }
+    }
+    if ($utd.Count -gt 0) {
+        $prefix = "  [+] Up to date:  "
+        $line   = $prefix
+        foreach ($lbl in $utd) {
+            if ($line.Length + $lbl.Length + 2 -gt 128 -and $line -ne $prefix) {
+                Write-Host $line.TrimEnd() -ForegroundColor DarkGreen
+                $line = "      "
             }
+            $line += $lbl + "  "
+        }
+        if ($line.Trim()) { Write-Host $line.TrimEnd() -ForegroundColor DarkGreen }
+    }
+    if ($blk.Count -gt 0) {
+        Write-Host ("  [!] Blocked:  " + ($blk -join "  ")) -ForegroundColor DarkRed
+    }
+    Write-Host ""
 
-            for ($c = 0; $c -lt $row.Count; $c++) {
-                $idx    = $row[$c]
+    if ($menuIdx.Count -eq 0) {
+        Write-Host "  All apps are installed and up to date. Press ENTER to exit." -ForegroundColor Green
+        Write-Host ""
+        Write-Host "  MANUAL: NinjaTrader 8  |  thinkorswim  |  Office 2010  |  Epson Scan 2" -ForegroundColor DarkGray
+        Write-Host ""
+        return
+    }
+
+    Write-Host ("  Select apps to install / update:  ({0} remaining)" -f $menuIdx.Count) -ForegroundColor Yellow
+    Write-Host ""
+
+    # Ordered categories present in menuIdx only
+    $seenCats = @{}; $orderedCats = @()
+    foreach ($idx in $menuIdx) {
+        $cat = $apps[$idx].Cat
+        if (-not $seenCats.ContainsKey($cat)) { $seenCats[$cat] = $true; $orderedCats += $cat }
+    }
+
+    $curAppIdx = if ($cursor -ge 0 -and $cursor -lt $menuIdx.Count) { $menuIdx[$cursor] } else { -1 }
+
+    foreach ($cat in $orderedCats) {
+        Write-Host ("  [ {0} ]" -f $cat) -ForegroundColor DarkCyan
+        $catItems = @($menuIdx | Where-Object { $apps[$_].Cat -eq $cat })
+
+        $ci = 0
+        while ($ci -lt $catItems.Count) {
+            $rowLen = [Math]::Min(4, $catItems.Count - $ci)
+            for ($c = 0; $c -lt $rowLen; $c++) {
+                $idx    = $catItems[$ci + $c]
+                $isCur  = ($idx -eq $curAppIdx)
                 $st     = $states[$idx]
-                $isCur  = ($idx -eq $cursor)
                 $prefix = if ($isCur) { ">>" } else { "  " }
-                $chk    = if ($st -eq 1) { "[X]" } elseif ($st -eq 2) { "[!]" } else { "[ ]" }
-                $color  = if ($isCur) { "Cyan" } elseif ($st -eq 1) { "Green" } elseif ($st -eq 2) { "DarkRed" } else { "DarkGray" }
-
-                $marker = if ($apps[$idx].HasUpd) { "^" } elseif ($apps[$idx].IsInst) { "+" } else { " " }
+                $chk    = if ($st -eq 1) { "[X]" } else { "[ ]" }
+                $color  = if ($isCur) { "Cyan" } elseif ($st -eq 1) { "Green" } else { "DarkGray" }
+                $marker = if ($apps[$idx].HasUpd) { "^" } else { " " }
                 $name   = $apps[$idx].Label
                 if ($name.Length -gt 17) { $name = $name.Substring(0, 17) }
-
-                # slot: prefix(2)+chk(3)+sp(1)+num(2)+". "(2)+name(17)+sp(1)+marker(1) = 29, padded to 32
+                # slot: prefix(2)+chk(3)+sp(1)+num(2)+". "(2)+name(17)+sp(1)+marker(1)=29, padded to 32
                 $slot   = ("{0}{1} {2,2}. {3} {4}" -f $prefix, $chk, ($idx+1), $name.PadRight(17), $marker).PadRight(32)
-                $isLast = ($c -eq ($row.Count - 1))
-
-                if ($isLast) {
-                    Write-Host $slot -ForegroundColor $color
-                } else {
-                    Write-Host $slot -ForegroundColor $color -NoNewline
-                }
+                $isLast = ($c -eq $rowLen - 1)
+                if ($isLast) { Write-Host $slot -ForegroundColor $color }
+                else         { Write-Host $slot -ForegroundColor $color -NoNewline }
             }
-
             $ci += 4
         }
-
-        $catStart = $catEnd
     }
 
     Write-Host ""
@@ -232,11 +256,20 @@ function Show-Menu($states, $cursor) {
     Write-Host ""
 }
 
+# ---- BUILD MENU INDEX ----
+# Only show apps that need action: not yet installed, or update available
+$menuIdx = @()
+for ($x = 0; $x -lt $apps.Count; $x++) {
+    if ($states[$x] -eq 2) { continue }
+    if ($apps[$x].IsInst -and -not $apps[$x].HasUpd) { continue }
+    $menuIdx += $x
+}
+
 # ---- INPUT LOOP ----
 $cursor = 0
 
 while ($true) {
-    Show-Menu $states $cursor
+    Show-Menu $states $menuIdx $cursor
     $key = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
     $ch  = $key.Character.ToString().ToUpper()
     $vk  = $key.VirtualKeyCode
@@ -244,32 +277,20 @@ while ($true) {
     if ($vk -eq 38) {
         if ($cursor -gt 0) { $cursor-- }
     } elseif ($vk -eq 40) {
-        if ($cursor -lt ($total - 1)) { $cursor++ }
+        if ($cursor -lt ($menuIdx.Count - 1)) { $cursor++ }
     } elseif ($vk -eq 32) {
-        $oldState = $states[$cursor]
-        $newState = ($oldState + 1) % 3
-        $states[$cursor] = $newState
-        # Sync NEVER list (8GadgetPack hardcoded to start [!] but user can still cycle)
-        $lbl  = $apps[$cursor].Label
-        $list = @(Read-NeverList)
-        if ($newState -eq 2) {
-            if ($list -notcontains $lbl) { Write-NeverList ($list + $lbl) }
-        } else {
-            $filtered = @($list | Where-Object { $_ -ne $lbl })
-            if ($filtered.Count -ne $list.Count) { Write-NeverList $filtered }
+        if ($menuIdx.Count -gt 0) {
+            $appIdx         = $menuIdx[$cursor]
+            $states[$appIdx] = if ($states[$appIdx] -eq 1) { 0 } else { 1 }
         }
     } elseif ($vk -eq 13) {
         break
     } elseif ($ch -eq "Q") {
         exit
     } elseif ($ch -eq "A") {
-        for ($k = 0; $k -lt $total; $k++) {
-            if ($states[$k] -ne 2) { $states[$k] = 1 }
-        }
+        foreach ($idx in $menuIdx) { $states[$idx] = 1 }
     } elseif ($ch -eq "N") {
-        for ($k = 0; $k -lt $total; $k++) {
-            if ($states[$k] -ne 2) { $states[$k] = 0 }
-        }
+        foreach ($idx in $menuIdx) { $states[$idx] = 0 }
     }
 }
 
