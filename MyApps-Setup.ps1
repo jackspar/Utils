@@ -123,31 +123,31 @@ $total = $apps.Count
 # ---- SHOW MENU ----
 function Show-Menu($selected) {
     Write-Banner
-    Write-Host ""
-    Write-Host "  Select apps to install  (number to toggle, ENTER to run, Q to quit)" -ForegroundColor Yellow
-    Write-Host "  A = Select All   N = Select None" -ForegroundColor DarkGray
+    Write-Host "  Toggle: 1-$total  |  A=all  |  N=none  |  ENTER=install  |  Q=quit" -ForegroundColor Yellow
     Write-Host ""
 
-    $lastCat = ""
-    for ($i = 0; $i -lt $apps.Count; $i++) {
-        if ($apps[$i].Cat -ne $lastCat) {
-            Write-Host ("     [ {0} ]" -f $apps[$i].Cat) -ForegroundColor DarkCyan
-            $lastCat = $apps[$i].Cat
+    $half = [Math]::Ceiling($apps.Count / 2)
+    for ($i = 0; $i -lt $half; $i++) {
+        $j = $i + $half
+        $chkL = if ($selected[$i]) { "[X]" } else { "[ ]" }
+        $colL = if ($selected[$i]) { "Green" } else { "DarkGray" }
+        $catL = $apps[$i].Cat.PadRight(8).Substring(0,8)
+        $left  = "  {0} {1,2}. {2} [{3}]" -f $chkL, ($i+1), $apps[$i].Label.TrimEnd().PadRight(24), $catL
+
+        if ($j -lt $apps.Count) {
+            $chkR = if ($selected[$j]) { "[X]" } else { "[ ]" }
+            $colR = if ($selected[$j]) { "Green" } else { "DarkGray" }
+            $catR = $apps[$j].Cat.PadRight(8).Substring(0,8)
+            $right = "  {0} {1,2}. {2} [{3}]" -f $chkR, ($j+1), $apps[$j].Label.TrimEnd().PadRight(24), $catR
+            Write-Host $left -ForegroundColor $colL -NoNewline
+            Write-Host $right -ForegroundColor $colR
+        } else {
+            Write-Host $left -ForegroundColor $colL
         }
-        $chk = if ($selected[$i]) { "[X]" } else { "[ ]" }
-        $col = if ($selected[$i]) { "Green" } else { "DarkGray" }
-        Write-Host ("  {0} {1,2}. {2}  {3}" -f $chk, ($i+1), $apps[$i].Label, $apps[$i].Note) -ForegroundColor $col
     }
 
     Write-Host ""
-    Write-Host "  ====================================================" -ForegroundColor Blue
-    Write-Host "  MANUAL ONLY (cannot be automated):" -ForegroundColor DarkGray
-    Write-Host "    NinjaTrader 8   ninjatrader.com (requires account)" -ForegroundColor DarkGray
-    Write-Host "    thinkorswim     schwab.com/trading/thinkorswim" -ForegroundColor DarkGray
-    Write-Host "    Office 2010     from install media" -ForegroundColor DarkGray
-    Write-Host "    Epson Scan 2    epson.com (scanner-specific)" -ForegroundColor DarkGray
-    Write-Host ""
-    Write-Host ("  1-{0} toggle  |  A all  |  N none  |  ENTER install  |  Q quit" -f $total) -ForegroundColor Yellow
+    Write-Host "  MANUAL: NinjaTrader 8  |  thinkorswim  |  Office 2010  |  Epson Scan 2" -ForegroundColor DarkGray
     Write-Host ""
 }
 
