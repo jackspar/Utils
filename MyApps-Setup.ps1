@@ -51,14 +51,26 @@ function Install-GitHubLatest($repo, $assetFilter, $label) {
     } catch { Write-Host "  [WARN] $label - $_" -ForegroundColor Yellow }
 }
 
-function Install-LocalMsi($path, $label) {
-    if (Test-Path $path) {
-        Write-Host "  Installing $label from local MSI..." -ForegroundColor Gray
-        Start-Process msiexec -ArgumentList "/i `"$path`" /quiet /norestart" -Wait
-        Write-Host "  [OK] $label" -ForegroundColor Green
-    } else {
-        Write-Host "  [WARN] $label - MSI not found at: $path" -ForegroundColor Yellow
-        Write-Host "         Download from: 8gadgetpack.net" -ForegroundColor DarkGray
+function Install-GadgetPack {
+    # GadgetPack (formerly 8GadgetPack) — gadgetpack.net
+    # Try downloading latest first; fall back to local copy on D:
+    $url      = "https://gadgetpack.net/dl_430/GadgetPackSetup.msi"
+    $localMsi = "D:\OneDrive\w10 to w11 migration\8GadgetPack\8GadgetPackSetup.msi"
+    $tmp      = Join-Path $env:TEMP "GadgetPackSetup.msi"
+
+    Write-Host "  Downloading GadgetPack from gadgetpack.net..." -ForegroundColor Gray
+    try {
+        Invoke-WebRequest -Uri $url -OutFile $tmp -ErrorAction Stop
+        Start-Process msiexec -ArgumentList "/i `"$tmp`" /quiet /norestart" -Wait
+        Write-Host "  [OK] GadgetPack v43.0" -ForegroundColor Green
+    } catch {
+        Write-Host "  [WARN] Download failed - trying local copy..." -ForegroundColor Yellow
+        if (Test-Path $localMsi) {
+            Start-Process msiexec -ArgumentList "/i `"$localMsi`" /quiet /norestart" -Wait
+            Write-Host "  [OK] GadgetPack (local copy)" -ForegroundColor Green
+        } else {
+            Write-Host "  [FAIL] No local copy found. Download manually: gadgetpack.net" -ForegroundColor Red
+        }
     }
 }
 
@@ -68,7 +80,7 @@ $apps = @(
     @{ Label = "ExplorerPatcher         "; Cat = "Shell/UI";    Note = "Classic Explorer/taskbar (GitHub)" }
     @{ Label = "Open Shell              "; Cat = "Shell/UI";    Note = "Classic cascading Start Menu (GitHub)" }
     @{ Label = "Microsoft PowerToys     "; Cat = "Shell/UI";    Note = "Alt+Space, FancyZones, File Explorer add-ons" }
-    @{ Label = "8GadgetPack             "; Cat = "Shell/UI";    Note = "Desktop gadget sidebar (local MSI from D:\OneDrive)" }
+    @{ Label = "GadgetPack              "; Cat = "Shell/UI";    Note = "Desktop gadgets (downloads v43 from gadgetpack.net)" }
     # Browsers
     @{ Label = "Brave Browser           "; Cat = "Browser";     Note = "Primary browser — auto-start, do NOT clear cache" }
     @{ Label = "Firefox                 "; Cat = "Browser";     Note = "Secondary + PWAs (Finviz) — do NOT clear cache" }
@@ -174,7 +186,7 @@ $i = 0
 if ($selected[$i]) { Write-Section "ExplorerPatcher";    Install-GitHubLatest "valinet/ExplorerPatcher" "ep_setup.exe" "ExplorerPatcher" };                                         $i++
 if ($selected[$i]) { Write-Section "Open Shell";         Install-GitHubLatest "Open-Shell/Open-Shell-Menu" "OpenShellSetup_*.exe" "Open Shell" };                                   $i++
 if ($selected[$i]) { Write-Section "PowerToys";          Install-Winget "Microsoft.PowerToys" "PowerToys" };                                                                        $i++
-if ($selected[$i]) { Write-Section "8GadgetPack";        Install-LocalMsi "D:\OneDrive\w10 to w11 migration\8GadgetPack\8GadgetPackSetup.msi" "8GadgetPack" };                      $i++
+if ($selected[$i]) { Write-Section "GadgetPack";         Install-GadgetPack };                                                                                               $i++
 # Browsers
 if ($selected[$i]) { Write-Section "Brave";              Install-Winget "Brave.Brave" "Brave Browser" };                                                                            $i++
 if ($selected[$i]) { Write-Section "Firefox";            Install-Winget "Mozilla.Firefox" "Firefox" };                                                                              $i++
@@ -225,8 +237,8 @@ Write-Host "  Post-install steps:" -ForegroundColor Yellow
 Write-Host "    1. ExplorerPatcher: Properties > Restart File Explorer" -ForegroundColor White
 Write-Host "    2. Open Shell: set Classic style, create My Utilities folder" -ForegroundColor White
 Write-Host "    3. HWiNFO: Settings > Shared Memory Support (ON)" -ForegroundColor White
-Write-Host "       Required for 8GadgetPack to read CPU temp/watts" -ForegroundColor DarkGray
-Write-Host "    4. Add Brave + 8GadgetPack to Startup folder" -ForegroundColor White
+Write-Host "       Required for GadgetPack to read CPU temp/watts sensors" -ForegroundColor DarkGray
+Write-Host "    4. Add Brave + GadgetPack to Startup folder" -ForegroundColor White
 Write-Host "    5. Set execution policy: Set-ExecutionPolicy RemoteSigned -Scope CurrentUser" -ForegroundColor White
 Write-Host ""
 Write-Host "  Manual installs still needed:" -ForegroundColor Yellow
