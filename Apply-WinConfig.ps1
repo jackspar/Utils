@@ -272,7 +272,8 @@ $bloatPackages = @(
     "Microsoft.Paint3D",
     "Microsoft.WindowsFeedbackHub",
     "Microsoft.WindowsMaps",
-    "Microsoft.549981C3F5F10",   # Cortana app (newer Win10 builds)
+    "Microsoft.549981C3F5F10",   # Cortana app (Win10 newer builds)
+    "Microsoft.Windows.Cortana", # Cortana app (Win11)
     # Win11 additions (safe to include -- silently skipped if not present on Win10)
     "MicrosoftTeams",            # consumer Teams (Win11 preinstalled)
     "Clipchamp.Clipchamp",       # Clipchamp video editor
