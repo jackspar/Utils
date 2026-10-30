@@ -92,12 +92,22 @@ if (!$SkipInstallers) {
         $script:rebootNeeded = $true
     }
 
-    # 3. Open Shell -- Ninite installer runs silently by default (no user prompts)
-    Step "Install Open Shell (Ninite)" {
-        $exe = Get-ChildItem "$InstDir\openshell\*.exe" | Select-Object -First 1
-        if (!$exe) { throw "Open Shell installer not found in $InstDir\openshell\" }
-        $exit = (Start-Process $exe.FullName -Wait -PassThru).ExitCode
-        if ($exit -ne 0) { throw "Ninite exited $exit" }
+    # 3. Open Shell -- standalone NSIS installer (offline-capable; Ninite requires internet)
+    Step "Install Open Shell (standalone)" {
+        # Prefer the standalone OpenShellSetup_*.exe; reject any Ninite wrapper in this context
+        $exe = Get-ChildItem "$InstDir\openshell\OpenShellSetup*.exe" |
+               Sort-Object LastWriteTime -Descending | Select-Object -First 1
+        if (!$exe) {
+            # Fallback: accept anything in folder but warn about Ninite
+            $exe = Get-ChildItem "$InstDir\openshell\*.exe" | Select-Object -First 1
+            if (!$exe) { throw "No Open Shell installer found in $InstDir\openshell\" }
+            if ($exe.Name -like "*Ninite*") {
+                Write-Warning "Using Ninite wrapper -- requires internet. Replace with standalone OpenShellSetup_*.exe for offline use."
+            }
+        }
+        # NSIS silent flag
+        $exit = (Start-Process $exe.FullName -ArgumentList "/S" -Wait -PassThru).ExitCode
+        if ($exit -ne 0) { Write-Warning "Open Shell installer exited $exit (may still have installed OK)" }
     }
 
     # 4. Core Temp -- NSIS installer
@@ -150,12 +160,25 @@ Step "Restore ExplorerPatcher registry" {
     if ($exit -ne 0) { throw "reg import exited $exit" }
 }
 
-# 3. Open Shell -- registry import
-Step "Restore Open Shell registry" {
+# 3. Open Shell -- import XML settings (primary) + registry (supplementary)
+Step "Restore Open Shell settings (XML import)" {
+    # XML is the officially supported portable format. Imported via StartMenu.exe -xml.
+    # This covers all user-visible settings (style, skin, behavior options).
+    $xml = "$SettingsDir\openshell\OpenShell.xml"
+    $startMenu = "C:\Program Files\Open-Shell\StartMenu.exe"
+    if (!(Test-Path $xml)) { throw "OpenShell.xml not in bundle" }
+    if (!(Test-Path $startMenu)) { throw "Open Shell not installed yet (run without -SkipInstallers first)" }
+    $exit = (Start-Process $startMenu -ArgumentList "-xml `"$xml`"" -Wait -PassThru).ExitCode
+    if ($exit -ne 0) { Write-Warning "StartMenu.exe -xml exited $exit (settings may still have applied)" }
+}
+
+Step "Restore Open Shell registry (supplementary)" {
+    # Registry export captures the full binary state including binary blobs.
+    # Applied after XML so XML wins on any overlap.
     $reg = "$SettingsDir\openshell\OpenShell.reg"
-    if (!(Test-Path $reg)) { throw "OpenShell.reg not in bundle" }
+    if (!(Test-Path $reg)) { Write-Warning "OpenShell.reg not in bundle -- skipping supplementary restore"; return }
     $exit = (Start-Process reg -ArgumentList "import `"$reg`"" -Wait -PassThru).ExitCode
-    if ($exit -ne 0) { throw "reg import exited $exit" }
+    if ($exit -ne 0) { Write-Warning "reg import exited $exit" }
 }
 
 # 4. Core Temp -- INI file

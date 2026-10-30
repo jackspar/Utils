@@ -100,20 +100,50 @@ Step "ExplorerPatcher -- stage installer (ep_setup.exe)" {
 }
 
 # -- 3. Open Shell --------------------------------------------------------------
-Step "Open Shell -- registry export" {
+Step "Open Shell -- registry export (supplementary)" {
     $regKey = "HKCU\Software\OpenShell"
     $out    = "$SettingsOut\openshell\OpenShell.reg"
     $result = reg export $regKey $out /y 2>&1
     if ($LASTEXITCODE -ne 0) { throw "reg export failed: $result" }
 }
 
-Step "Open Shell -- stage installer" {
+Step "Open Shell -- copy XML settings (primary restore method)" {
+    # XML exported from Open Shell Settings > Backup button.
+    # Install-CoreApps.ps1 imports this via: StartMenu.exe -xml <file>
+    # This is the officially supported portable format (human-readable, cross-version safe).
+    $xmlCandidates = @(
+        "D:\OneDrive\w10 to w11 migration\Open Shell\JR Menu Settings Open Shell.xml",
+        "$SettingsOut\openshell\OpenShell.xml"  # in case already staged
+    )
+    $src = $xmlCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+    if (!$src) {
+        Write-Warning "No OpenShell.xml found. Export one manually: Open Shell Settings > Backup > Save to XML"
+        throw "OpenShell.xml not found -- see warning above"
+    }
+    Copy-Item $src "$SettingsOut\openshell\OpenShell.xml" -Force
+}
+
+Step "Open Shell -- stage standalone installer" {
+    # MUST be the standalone installer (OpenShellSetup_*.exe from GitHub releases).
+    # Ninite wrapper requires internet and WILL FAIL in offline Fusion setup.
+    # Download from: github.com/Open-Shell/Open-Shell-Menu/releases
     $candidates = @(
-        "D:\OneDrive\w10 to w11 migration\Open Shell\Ninite OpenShell Installer.exe"
+        "D:\OneDrive\w10 to w11 migration\Open Shell\OpenShellSetup_4_4_198.exe",
+        "D:\OneDrive\Downloads\OpenShellSetup_4_4_198.exe"
     )
     $src = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
-    if (!$src) { throw "Open Shell installer not found on D:" }
-    Copy-Item $src "$InstOut\openshell\NiniteOpenShell-Installer.exe" -Force
+    if (!$src) {
+        # Ninite found but warn it won't work offline
+        $ninite = "D:\OneDrive\w10 to w11 migration\Open Shell\Ninite OpenShell Installer.exe"
+        if (Test-Path $ninite) {
+            Write-Warning "Only Ninite wrapper found -- this requires internet. Download standalone from GitHub releases."
+            Copy-Item $ninite "$InstOut\openshell\NiniteOpenShell-Installer-ONLINE-ONLY.exe" -Force
+            throw "Standalone OpenShellSetup_*.exe not found. Download from github.com/Open-Shell/Open-Shell-Menu/releases"
+        }
+        throw "No Open Shell installer found on D:"
+    }
+    $destName = Split-Path $src -Leaf
+    Copy-Item $src "$InstOut\openshell\$destName" -Force
 }
 
 # -- 4. Core Temp ---------------------------------------------------------------
