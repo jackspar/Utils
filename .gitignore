@@ -1,2 +1,5 @@
 # Offline installer bundle - local only, not in git (too large)
 MyApps-Offline/installers/
+
+# CoreApps bundle output - local only (large installers + settings)
+CoreApps-Bundle/
