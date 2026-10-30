@@ -184,6 +184,14 @@ Step "Restore Macrium Reflect registry (HKLM)" {
     if ($exit -ne 0) { throw "reg import HKLM exited $exit" }
 }
 
+Step "Macrium -- suppress update check (set LastCheck far future)" {
+    # v7 update servers went offline Jan 2024. Setting LastCheck=20991231 prevents
+    # any auto-check attempt on startup. Value is stored as decimal date (YYYYMMDD).
+    $key = "HKCU:\Software\Macrium\Reflect\Defaults"
+    if (!(Test-Path $key)) { New-Item -Path $key -Force | Out-Null }
+    Set-ItemProperty -Path $key -Name "LastCheck" -Value 20991231 -Type DWord
+}
+
 # -- Summary --------------------------------------------------------------------
 Write-Host ""
 Write-Host "  -------------------------------------" -ForegroundColor DarkGray

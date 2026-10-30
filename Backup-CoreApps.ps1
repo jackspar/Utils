@@ -154,11 +154,6 @@ Step "Macrium Reflect -- stage v7 installer" {
     Copy-Item $src "$InstOut\macrium\reflect-v7.2.4539-setup-free-x64.exe" -Force
 }
 
-Step "Macrium Reflect -- stage v8 installer" {
-    $src = "D:\OneDrive\Downloads\Macrium Reflect x64 v8.0.7783\reflect_setup_free_x64 v8.0.7783.exe"
-    if (!(Test-Path $src)) { throw "Macrium v8 installer not found: $src" }
-    Copy-Item $src "$InstOut\macrium\reflect-v8.0.7783-setup-free-x64.exe" -Force
-}
 
 # NOTE: Macrium backup JOB DEFINITIONS (scheduled backup plans) are stored as
 # XML files. Check Macrium Reflect > Other Tasks > Edit Defaults for the
