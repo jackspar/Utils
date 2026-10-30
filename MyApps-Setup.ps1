@@ -241,9 +241,11 @@ function Show-Menu($states, $menuIdx, $cursor) {
                 $marker = if ($apps[$idx].HasUpd) { "^" } else { " " }
                 $name   = $apps[$idx].Label
                 if ($name.Length -gt 17) { $name = $name.Substring(0, 17) }
-                # slot: prefix(2)+chk(3)+sp(1)+num(2)+". "(2)+name(17)+sp(1)+marker(1)=29, padded to 32
-                $slot   = ("{0}{1} {2,2}. {3} {4}" -f $prefix, $chk, ($idx+1), $name.PadRight(17), $marker).PadRight(32)
+                # slot: prefix(2)+chk(3)+sp(1)+num(2)+". "(2)+name(17)+sp(1)+marker(1)=29 chars
+                # last col: no PadRight — trailing spaces cause wrap when window is slightly narrow
                 $isLast = ($c -eq $rowLen - 1)
+                $raw    = "{0}{1} {2,2}. {3} {4}" -f $prefix, $chk, ($idx+1), $name.PadRight(17), $marker
+                $slot   = if ($isLast) { $raw } else { $raw.PadRight(32) }
                 if ($isLast) { Write-Host $slot -ForegroundColor $color }
                 else         { Write-Host $slot -ForegroundColor $color -NoNewline }
             }
