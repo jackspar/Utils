@@ -17,10 +17,16 @@
     Run as Administrator. Reboot required after ExplorerPatcher.
 #>
 param(
-    [string]$BundleRoot      = (Join-Path $PSScriptRoot "CoreApps-Bundle"),
+    [string]$BundleRoot          = (Join-Path $PSScriptRoot "CoreApps-Bundle"),
     [ValidateSet(7, 8)]
-    [int]$MacriumVersion     = 7,
-    [switch]$SkipInstallers
+    [int]$MacriumVersion         = 7,
+    [switch]$SkipInstallers,
+    [switch]$Skip8GadgetPack,
+    [switch]$SkipExplorerPatcher,
+    [switch]$SkipOpenShell,
+    [switch]$SkipCoreTemp,
+    [switch]$SkipMacrium,
+    [switch]$SkipSettings
 )
 
 $ErrorActionPreference = 'Continue'
@@ -86,45 +92,63 @@ Write-Host ""
 if (!$SkipInstallers) {
 
     # 1. 8GadgetPack -- MSI silent
-    Step "Install 8GadgetPack v31 (MSI)" {
-        $msi = Get-ChildItem "$InstDir\8gadgetpack\*.msi" | Select-Object -First 1
-        if (!$msi) { throw "8GadgetPack MSI not found in $InstDir\8gadgetpack\" }
-        $exit = (Start-Process msiexec -ArgumentList "/i `"$($msi.FullName)`" /quiet /norestart" -Wait -PassThru).ExitCode
-        if ($exit -ne 0 -and $exit -ne 3010) { throw "msiexec exited $exit" }
+    if ($Skip8GadgetPack) {
+        Write-Host "  Install 8GadgetPack -- SKIPPED (-Skip8GadgetPack)" -ForegroundColor DarkGray
+    } else {
+        Step "Install 8GadgetPack v31 (MSI)" {
+            $msi = Get-ChildItem "$InstDir\8gadgetpack\*.msi" | Select-Object -First 1
+            if (!$msi) { throw "8GadgetPack MSI not found in $InstDir\8gadgetpack\" }
+            $exit = (Start-Process msiexec -ArgumentList "/i `"$($msi.FullName)`" /quiet /norestart" -Wait -PassThru).ExitCode
+            if ($exit -ne 0 -and $exit -ne 3010) { throw "msiexec exited $exit" }
+        }
     }
 
-    # 2. ExplorerPatcher -- runs its own installer (no reliable silent flag; uses /S for NSIS-style)
+    # 2. ExplorerPatcher -- pick x64 or ARM64 installer based on CPU architecture
+    if ($SkipExplorerPatcher) {
+        Write-Host "  Install ExplorerPatcher -- SKIPPED (-SkipExplorerPatcher)" -ForegroundColor DarkGray
+    } else {
     Step "Install ExplorerPatcher" {
-        $exe = Get-ChildItem "$InstDir\explorerpatcher\ep_setup*.exe" |
-               Sort-Object LastWriteTime -Descending | Select-Object -First 1
+        $isArm64 = ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64')
+        if ($isArm64) {
+            $exe = Get-ChildItem "$InstDir\explorerpatcher\ep_setup_arm64*.exe" |
+                   Sort-Object LastWriteTime -Descending | Select-Object -First 1
+            if (!$exe) {
+                Write-Warning "ARM64 installer not in bundle, falling back to x64 (runs via emulation)"
+                $exe = Get-ChildItem "$InstDir\explorerpatcher\ep_setup*.exe" |
+                       Where-Object { $_.Name -notlike "*arm64*" } |
+                       Sort-Object LastWriteTime -Descending | Select-Object -First 1
+            }
+        } else {
+            $exe = Get-ChildItem "$InstDir\explorerpatcher\ep_setup*.exe" |
+                   Where-Object { $_.Name -notlike "*arm64*" } |
+                   Sort-Object LastWriteTime -Descending | Select-Object -First 1
+        }
         if (!$exe) { throw "ep_setup not found in $InstDir\explorerpatcher\" }
-        # ExplorerPatcher uses /S for unattended install
         $exit = (Start-Process $exe.FullName -ArgumentList "/S" -Wait -PassThru).ExitCode
         if ($exit -ne 0) { Write-Warning "ep_setup exited $exit (may still have installed OK)" }
         $script:rebootNeeded = $true
     }
+    }  # end if !$SkipExplorerPatcher
 
     # 3. Open Shell -- standalone NSIS installer (offline-capable; Ninite requires internet)
+    if ($SkipOpenShell) {
+        Write-Host "  Install Open Shell -- SKIPPED (-SkipOpenShell)" -ForegroundColor DarkGray
+    } else {
     Step "Install Open Shell (standalone)" {
-        # Prefer the standalone OpenShellSetup_*.exe; reject any Ninite wrapper in this context
         $exe = Get-ChildItem "$InstDir\openshell\OpenShellSetup*.exe" |
                Sort-Object LastWriteTime -Descending | Select-Object -First 1
         if (!$exe) {
-            # Fallback: accept anything in folder but warn about Ninite
-            $exe = Get-ChildItem "$InstDir\openshell\*.exe" | Select-Object -First 1
-            if (!$exe) { throw "No Open Shell installer found in $InstDir\openshell\" }
-            if ($exe.Name -like "*Ninite*") {
-                Write-Warning "Using Ninite wrapper -- requires internet. Replace with standalone OpenShellSetup_*.exe for offline use."
-            }
+            throw "No standalone OpenShellSetup_*.exe found in $InstDir\openshell\`nRun Backup-CoreApps.ps1 on source machine with OpenShellSetup_*.exe present on D: first."
         }
-        # NSIS silent flag
         $exit = (Start-Process $exe.FullName -ArgumentList "/S" -Wait -PassThru).ExitCode
         if ($exit -ne 0) { Write-Warning "Open Shell installer exited $exit (may still have installed OK)" }
     }
+    }  # end if !$SkipOpenShell
 
     # 4. Core Temp -- NSIS installer (bare metal only; no physical sensors in a VM)
-    if ($isVM) {
-        Write-Host "  Install Core Temp -- SKIPPED (VM: no physical CPU sensors)" -ForegroundColor DarkGray
+    if ($isVM -or $SkipCoreTemp) {
+        $reason = if ($isVM) { 'VM' } else { '-SkipCoreTemp' }
+        Write-Host "  Install Core Temp -- SKIPPED ($reason)" -ForegroundColor DarkGray
     } else {
         Step "Install Core Temp v1.18.1" {
             $exe = Get-ChildItem "$InstDir\coretemp\*.exe" | Select-Object -First 1
@@ -135,20 +159,30 @@ if (!$SkipInstallers) {
     }
 
     # 5. Macrium Reflect -- InnoSetup silent flags (bare metal only; Fusion snapshots handle backup)
-    if ($isVM) {
-        Write-Host "  Install Macrium Reflect -- SKIPPED (VM: use hypervisor snapshots for backup)" -ForegroundColor DarkGray
+    if ($isVM -or $SkipMacrium) {
+        $reason = if ($isVM) { 'VM' } else { '-SkipMacrium' }
+        Write-Host "  Install Macrium Reflect -- SKIPPED ($reason)" -ForegroundColor DarkGray
     } else {
         Step "Install Macrium Reflect v$MacriumVersion" {
             $pattern = if ($MacriumVersion -eq 7) { "*v7*" } else { "*v8*" }
             $exe = Get-ChildItem "$InstDir\macrium\$pattern" | Select-Object -First 1
             if (!$exe) { throw "Macrium v$MacriumVersion installer not found in $InstDir\macrium\" }
-            $exit = (Start-Process $exe.FullName -ArgumentList "/verysilent /norestart" -Wait -PassThru).ExitCode
-            if ($exit -ne 0) { throw "Macrium installer exited $exit" }
+            if ($exe.Extension -eq '.msi') {
+                $exit = (Start-Process msiexec -ArgumentList "/i `"$($exe.FullName)`" /quiet /norestart" -Wait -PassThru).ExitCode
+            } else {
+                $exit = (Start-Process $exe.FullName -ArgumentList "/verysilent /norestart" -Wait -PassThru).ExitCode
+            }
+            if ($exit -ne 0 -and $exit -ne 3010) { throw "Macrium installer exited $exit" }
         }
     }
 }
 
 # -- SETTINGS RESTORE PHASE -----------------------------------------------------
+
+if ($SkipSettings) {
+    Write-Host ""
+    Write-Host "  -- Settings restore SKIPPED (-SkipSettings) --" -ForegroundColor DarkGray
+} else {
 
 Write-Host ""
 Write-Host "  -- Restoring settings --" -ForegroundColor Cyan
@@ -242,6 +276,8 @@ if ($isVM) {
         Set-ItemProperty -Path $key -Name "LastCheck" -Value 20991231 -Type DWord
     }
 }
+
+} # end if !$SkipSettings
 
 # -- Summary --------------------------------------------------------------------
 Write-Host ""

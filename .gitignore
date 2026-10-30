@@ -3,3 +3,5 @@ MyApps-Offline/installers/
 
 # CoreApps bundle output - local only (large installers + settings)
 CoreApps-Bundle/
+# MyWin-Setup.exe - too large for git, upload to GitHub Releases
+MyWin-Setup.exe

@@ -87,16 +87,26 @@ Step "ExplorerPatcher -- registry export" {
     if ($LASTEXITCODE -ne 0) { throw "reg export failed: $result" }
 }
 
-Step "ExplorerPatcher -- stage installer (ep_setup.exe)" {
-    # Prefer the w10-to-w11 migration folder (curated); fall back to Downloads
-    $candidates = @(
-        "D:\OneDrive\w10 to w11 migration\Explorer Patcher\ep_setup.exe",
-        "D:\OneDrive\Downloads\Explorer Patcher\ep_setup.exe"
+Step "ExplorerPatcher -- stage x64 + ARM64 installers" {
+    # x64 = BeeSER / Dells / 4790k / Sam13 / BeeMini (Win10 x64)
+    # ARM64 = Fusion VMs (Win11 ARM on Air M5)
+    $epFolders = @(
+        "D:\OneDrive\w10 to w11 migration\Explorer Patcher",
+        "D:\OneDrive\Downloads\Explorer Patcher"
     )
-    $src = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
-    if (!$src) { throw "ep_setup.exe not found on D:" }
-    $ver = (Get-Item $src).LastWriteTime.ToString('yyyy-MM-dd')
-    Copy-Item $src "$InstOut\explorerpatcher\ep_setup-$ver.exe" -Force
+    foreach ($variant in @("ep_setup.exe", "ep_setup_arm64.exe")) {
+        $src = $epFolders | ForEach-Object { Join-Path $_ $variant } |
+               Where-Object { Test-Path $_ } | Select-Object -First 1
+        if ($src) {
+            $ver      = (Get-Item $src).LastWriteTime.ToString('yyyy-MM-dd')
+            $destName = $variant -replace '\.exe', "-$ver.exe"
+            Copy-Item $src "$InstOut\explorerpatcher\$destName" -Force
+        } elseif ($variant -eq 'ep_setup.exe') {
+            throw "ep_setup.exe (x64) not found on D: -- required for Win10 x64 machines"
+        } else {
+            Write-Warning "ep_setup_arm64.exe not found -- ARM64/Win11 Fusion installs will skip EP"
+        }
+    }
 }
 
 # -- 3. Open Shell --------------------------------------------------------------
