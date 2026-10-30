@@ -149,9 +149,22 @@ Step "Macrium Reflect -- HKLM registry export" {
 }
 
 Step "Macrium Reflect -- stage v7 installer" {
-    $src = "D:\OneDrive\Downloads\Macrium Reflect v7.2.4539\v7.2.4539_reflect_setup_free_x64.exe"
-    if (!(Test-Path $src)) { throw "Macrium v7 installer not found: $src" }
-    Copy-Item $src "$InstOut\macrium\reflect-v7.2.4539-setup-free-x64.exe" -Force
+    # Prefer exact-version MSI from Windows Installer cache (always present on BeeSER after install)
+    $cacheMatch = Get-ChildItem "C:\Windows\Installer" -Filter "reflect_setup*x64*.msi" -ErrorAction SilentlyContinue |
+                  Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    if ($cacheMatch) {
+        $destName = "reflect-$($cacheMatch.BaseName -replace 'reflect_setup','').msi" -replace '--','-'
+        Copy-Item $cacheMatch.FullName "$InstOut\macrium\$destName" -Force
+        return
+    }
+    # Fallback: look in Downloads for any v7 installer
+    $candidates = @(
+        "D:\OneDrive\Downloads\Macrium Reflect v7.2.4539\v7.2.4539_reflect_setup_free_x64.exe",
+        "D:\OneDrive\w10 to w11 migration\Macrium\reflect_setup_free_x64.exe"
+    )
+    $src = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+    if (!$src) { throw "Macrium v7 installer not found in Windows Installer cache or Downloads" }
+    Copy-Item $src "$InstOut\macrium\$(Split-Path $src -Leaf)" -Force
 }
 
 

@@ -208,6 +208,8 @@ if ($rebootNeeded) {
 Write-Host ""
 Write-Host "  Manual steps after reboot:" -ForegroundColor DarkGray
 Write-Host "    - 8GadgetPack: right-click desktop -> Gadgets, enable sidebar" -ForegroundColor DarkGray
+    Write-Host "    - 8GadgetPack: gadget positions restore at absolute pixel coords from source machine." -ForegroundColor DarkGray
+    Write-Host "                  If monitor layout differs, drag gadgets to correct positions." -ForegroundColor DarkGray
 Write-Host "    - Macrium: verify license key in Help > About" -ForegroundColor DarkGray
 Write-Host "    - Macrium: recreate any scheduled backup jobs (not captured by this bundle)" -ForegroundColor DarkGray
 Write-Host ""
