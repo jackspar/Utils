@@ -62,9 +62,21 @@ function WaitForProcess($exePath, $timeoutSec = 120) {
     return $proc.ExitCode
 }
 
+function Get-MachineContext {
+    $cs = Get-CimInstance Win32_ComputerSystem -ErrorAction SilentlyContinue
+    if ($cs.Manufacturer -like "*VMware*")    { return "VMware" }
+    if ($cs.Manufacturer -like "*VirtualBox*") { return "VirtualBox" }
+    if ($cs.Manufacturer -like "*Microsoft*" -and $cs.Model -like "*Virtual*") { return "HyperV" }
+    return "BareMetal"
+}
+
+$machineContext = Get-MachineContext
+$isVM = ($machineContext -ne "BareMetal")
+
 Write-Host ""
 Write-Host "  CoreApps Installer  --  $(Get-Date -Format 'yyyy-MM-dd HH:mm')" -ForegroundColor Cyan
 Write-Host "  Bundle:  $BundleRoot" -ForegroundColor DarkGray
+Write-Host "  Machine: $machineContext$(if ($isVM) { ' -- VM mode: Core Temp + Macrium skipped' })" -ForegroundColor $(if ($isVM) { 'Yellow' } else { 'DarkGray' })
 Write-Host "  Macrium: v$MacriumVersion" -ForegroundColor DarkGray
 Write-Host "  Mode:    $(if ($SkipInstallers) { 'Settings-restore only' } else { 'Install + restore' })" -ForegroundColor DarkGray
 Write-Host ""
@@ -110,21 +122,29 @@ if (!$SkipInstallers) {
         if ($exit -ne 0) { Write-Warning "Open Shell installer exited $exit (may still have installed OK)" }
     }
 
-    # 4. Core Temp -- NSIS installer
-    Step "Install Core Temp v1.18.1" {
-        $exe = Get-ChildItem "$InstDir\coretemp\*.exe" | Select-Object -First 1
-        if (!$exe) { throw "Core Temp installer not found in $InstDir\coretemp\" }
-        $exit = (Start-Process $exe.FullName -ArgumentList "/S" -Wait -PassThru).ExitCode
-        if ($exit -ne 0) { throw "Core Temp installer exited $exit" }
+    # 4. Core Temp -- NSIS installer (bare metal only; no physical sensors in a VM)
+    if ($isVM) {
+        Write-Host "  Install Core Temp -- SKIPPED (VM: no physical CPU sensors)" -ForegroundColor DarkGray
+    } else {
+        Step "Install Core Temp v1.18.1" {
+            $exe = Get-ChildItem "$InstDir\coretemp\*.exe" | Select-Object -First 1
+            if (!$exe) { throw "Core Temp installer not found in $InstDir\coretemp\" }
+            $exit = (Start-Process $exe.FullName -ArgumentList "/S" -Wait -PassThru).ExitCode
+            if ($exit -ne 0) { throw "Core Temp installer exited $exit" }
+        }
     }
 
-    # 5. Macrium Reflect -- InnoSetup silent flags
-    Step "Install Macrium Reflect v$MacriumVersion" {
-        $pattern = if ($MacriumVersion -eq 7) { "*v7*" } else { "*v8*" }
-        $exe = Get-ChildItem "$InstDir\macrium\$pattern" | Select-Object -First 1
-        if (!$exe) { throw "Macrium v$MacriumVersion installer not found in $InstDir\macrium\" }
-        $exit = (Start-Process $exe.FullName -ArgumentList "/verysilent /norestart" -Wait -PassThru).ExitCode
-        if ($exit -ne 0) { throw "Macrium installer exited $exit" }
+    # 5. Macrium Reflect -- InnoSetup silent flags (bare metal only; Fusion snapshots handle backup)
+    if ($isVM) {
+        Write-Host "  Install Macrium Reflect -- SKIPPED (VM: use hypervisor snapshots for backup)" -ForegroundColor DarkGray
+    } else {
+        Step "Install Macrium Reflect v$MacriumVersion" {
+            $pattern = if ($MacriumVersion -eq 7) { "*v7*" } else { "*v8*" }
+            $exe = Get-ChildItem "$InstDir\macrium\$pattern" | Select-Object -First 1
+            if (!$exe) { throw "Macrium v$MacriumVersion installer not found in $InstDir\macrium\" }
+            $exit = (Start-Process $exe.FullName -ArgumentList "/verysilent /norestart" -Wait -PassThru).ExitCode
+            if ($exit -ne 0) { throw "Macrium installer exited $exit" }
+        }
     }
 }
 
@@ -181,38 +201,46 @@ Step "Restore Open Shell registry (supplementary)" {
     if ($exit -ne 0) { Write-Warning "reg import exited $exit" }
 }
 
-# 4. Core Temp -- INI file
-Step "Restore CoreTemp.ini" {
-    $dst = "C:\Program Files\Core Temp\CoreTemp.ini"
-    $src = "$SettingsDir\coretemp\CoreTemp.ini"
-    if (!(Test-Path $src)) { throw "CoreTemp.ini not in bundle" }
-    if (!(Test-Path "C:\Program Files\Core Temp")) {
-        throw "Core Temp not installed yet (run without -SkipInstallers first)"
+# 4. Core Temp -- INI file (bare metal only)
+if ($isVM) {
+    Write-Host "  Restore CoreTemp.ini -- SKIPPED (VM)" -ForegroundColor DarkGray
+} else {
+    Step "Restore CoreTemp.ini" {
+        $dst = "C:\Program Files\Core Temp\CoreTemp.ini"
+        $src = "$SettingsDir\coretemp\CoreTemp.ini"
+        if (!(Test-Path $src)) { throw "CoreTemp.ini not in bundle" }
+        if (!(Test-Path "C:\Program Files\Core Temp")) {
+            throw "Core Temp not installed yet (run without -SkipInstallers first)"
+        }
+        Copy-Item $src $dst -Force
     }
-    Copy-Item $src $dst -Force
 }
 
-# 5. Macrium Reflect -- registry import
-Step "Restore Macrium Reflect registry (HKCU)" {
-    $reg = "$SettingsDir\macrium\Macrium-HKCU.reg"
-    if (!(Test-Path $reg)) { throw "Macrium-HKCU.reg not in bundle" }
-    $exit = (Start-Process reg -ArgumentList "import `"$reg`"" -Wait -PassThru).ExitCode
-    if ($exit -ne 0) { throw "reg import HKCU exited $exit" }
-}
+# 5. Macrium Reflect -- registry import (bare metal only)
+if ($isVM) {
+    Write-Host "  Restore Macrium Reflect -- SKIPPED (VM)" -ForegroundColor DarkGray
+} else {
+    Step "Restore Macrium Reflect registry (HKCU)" {
+        $reg = "$SettingsDir\macrium\Macrium-HKCU.reg"
+        if (!(Test-Path $reg)) { throw "Macrium-HKCU.reg not in bundle" }
+        $exit = (Start-Process reg -ArgumentList "import `"$reg`"" -Wait -PassThru).ExitCode
+        if ($exit -ne 0) { throw "reg import HKCU exited $exit" }
+    }
 
-Step "Restore Macrium Reflect registry (HKLM)" {
-    $reg = "$SettingsDir\macrium\Macrium-HKLM.reg"
-    if (!(Test-Path $reg)) { throw "Macrium-HKLM.reg not in bundle" }
-    $exit = (Start-Process reg -ArgumentList "import `"$reg`"" -Wait -PassThru).ExitCode
-    if ($exit -ne 0) { throw "reg import HKLM exited $exit" }
-}
+    Step "Restore Macrium Reflect registry (HKLM)" {
+        $reg = "$SettingsDir\macrium\Macrium-HKLM.reg"
+        if (!(Test-Path $reg)) { throw "Macrium-HKLM.reg not in bundle" }
+        $exit = (Start-Process reg -ArgumentList "import `"$reg`"" -Wait -PassThru).ExitCode
+        if ($exit -ne 0) { throw "reg import HKLM exited $exit" }
+    }
 
-Step "Macrium -- suppress update check (set LastCheck far future)" {
-    # v7 update servers went offline Jan 2024. Setting LastCheck=20991231 prevents
-    # any auto-check attempt on startup. Value is stored as decimal date (YYYYMMDD).
-    $key = "HKCU:\Software\Macrium\Reflect\Defaults"
-    if (!(Test-Path $key)) { New-Item -Path $key -Force | Out-Null }
-    Set-ItemProperty -Path $key -Name "LastCheck" -Value 20991231 -Type DWord
+    Step "Macrium -- suppress update check (set LastCheck far future)" {
+        # v7 update servers went offline Jan 2024. Setting LastCheck=20991231 prevents
+        # any auto-check attempt on startup. Value is stored as decimal date (YYYYMMDD).
+        $key = "HKCU:\Software\Macrium\Reflect\Defaults"
+        if (!(Test-Path $key)) { New-Item -Path $key -Force | Out-Null }
+        Set-ItemProperty -Path $key -Name "LastCheck" -Value 20991231 -Type DWord
+    }
 }
 
 # -- Summary --------------------------------------------------------------------
